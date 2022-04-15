@@ -5,23 +5,23 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  print_hello:
+  print_hello:  # 1st build
     docker:
       - image: cimg/base:stable
     steps:
-      - checkout
+      - checkout  # check out source code to working directory
       - run:
           name: "Say hello"
           command: "echo Hello, "
 
-  print_world:
+  print_world:  # 2nd build
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - run:
           name: "Say world"
-          command: "echo  World!"
+          command: 'echo "$TestEnvVar"'
 
   # say-hello:
   #   # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
