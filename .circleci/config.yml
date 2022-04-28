@@ -22,7 +22,7 @@ jobs:
               --output text >> inventory
             cat inventory
       - save_cache:
-          key: built-inventory-{{ .BuildNum }}
+          key: built-inventory-{{ checksum "inventory" }}
           paths:
             - ./inventory
 
@@ -41,7 +41,7 @@ jobs:
             sudo apt install ansible
       - restore_cache:
           keys:
-            - built-inventory-{{ .BuildNum }}
+            - built-inventory-{{ checksum "inventory" }}
       - run:
           name: Run Playbook and Configure server
           command: |
