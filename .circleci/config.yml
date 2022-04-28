@@ -24,7 +24,7 @@ jobs:
       - save_cache:
           key: built-inventory
           paths:
-            - ./inventory
+            - inventory
 
   configure_infrastructure:  # 2nd build
     docker:
@@ -45,8 +45,7 @@ jobs:
       - run:
           name: Run Playbook and Configure server
           command: |
-            pwd
-            ls -la
+            cp /root/inventory .
             cat inventory
             ansible-playbook ansible-main.yml
 
