@@ -21,8 +21,9 @@ jobs:
               --query 'Reservations[*].Instances[*].PublicIpAddress' \
               --output text >> inventory
             cat inventory
+            pwd
       - save_cache:
-          key: built-inventory
+          key: new-inventory
           paths:
             - inventory
 
@@ -41,7 +42,7 @@ jobs:
             sudo apt install ansible
       - restore_cache:
           keys:
-            - built-inventory
+            - new-inventory
       - run:
           name: Run Playbook and Configure server
           command: |
