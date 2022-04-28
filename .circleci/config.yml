@@ -24,7 +24,7 @@ jobs:
       - save_cache:
         key: built-inventory
         paths:
-          - ./inventory
+          - ~/inventory
 
   configure_infrastructure:  # 2nd build
     docker:
