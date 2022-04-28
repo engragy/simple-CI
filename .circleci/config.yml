@@ -22,9 +22,9 @@ jobs:
               --output text >> inventory
             cat inventory
       - save_cache:
-        key: built-inventory
-        paths:
-          - ~/inventory
+          key: built-inventory
+          paths:
+            - ~/inventory
 
   configure_infrastructure:  # 2nd build
     docker:
