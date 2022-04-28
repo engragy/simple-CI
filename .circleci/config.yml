@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   create_infrastructure:  # 1st build
     docker:
-      - image: amazon/aws-cli
+      - image: amazon/aws-cli  # image user=root, default working dir=/root/project 
     steps:
       - checkout  # check out source code to working directory
       # - run:
@@ -21,7 +21,7 @@ jobs:
               --query 'Reservations[*].Instances[*].PublicIpAddress' \
               --output text >> inventory
             cat inventory
-            pwd
+            mv inventory /tmp/inventory  # save_dir == restore_dir
       - save_cache:
           key: new-inventory
           paths:
@@ -29,7 +29,7 @@ jobs:
 
   configure_infrastructure:  # 2nd build
     docker:
-      - image: circleci/python
+      - image: circleci/python  # image user=circleci, default working dir=/home/circleci/project
     steps:
       - checkout  # check out source code to working directory
       - add_ssh_keys:  # using EC2 instance ssh key
@@ -40,13 +40,13 @@ jobs:
           command: |
             sudo apt update
             sudo apt install ansible
-            pwd
       - restore_cache:
           keys:
             - new-inventory
       - run:
           name: Run Playbook and Configure server
           command: |
+            sudo cp /tmp/inventory .
             cat inventory
             ansible-playbook ansible-main.yml
 
