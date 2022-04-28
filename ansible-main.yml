@@ -1,0 +1,12 @@
+---
+# Exercise for setting up a web server in an aws EC2
+- name: Exercise for setting up a web server in an EC2 (Ubuntu)
+  # Use the public IP if the VM is already created
+  hosts: all
+  # For Ubuntu instances, the user will be `ubuntu`
+  # For Amazon LInux 2 instance, the user will be `ec2-user`
+  user: ubuntu
+  become: true
+  roles:
+   - setup
+
