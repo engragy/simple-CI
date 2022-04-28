@@ -22,7 +22,7 @@ jobs:
               --output text >> inventory
             cat inventory
       - save_cache:
-          key: built-inventory
+          key: built-inventory-{{ .BuildNum }}
           paths:
             - ./inventory
 
@@ -41,10 +41,12 @@ jobs:
             sudo apt install ansible
       - restore_cache:
           keys:
-            - built-inventory
+            - built-inventory-{{ .BuildNum }}
       - run:
           name: Run Playbook and Configure server
           command: |
+            pwd
+            ls -la
             cat inventory
             ansible-playbook ansible-main.yml
 
