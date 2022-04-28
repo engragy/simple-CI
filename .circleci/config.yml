@@ -1,4 +1,13 @@
 version: 2.1
+commands:  # commands that can be reused as needed in any job
+  destroy_infrastructure: # command to destroy AWS green resources (in blue/green deployment startegy)
+    steps:
+      - run:
+          name: Destroy Green Resources
+          when: on_fail
+          command: |
+            aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5}
+
 
 jobs:
   create_infrastructure:  # 1st build
@@ -52,26 +61,28 @@ jobs:
 
   smoke_test: # 3rd build
     docker:
-      - image: alpine:latest
+      # - image: alpine:latest
+      - image: amazon/aws-cli
     steps:
-      - run: apk add --update curl
+      # - run: apk add --update curl
       - run:
           name: smoke test
           command: |
-            URL="https://blog.udacity.com/"
             # Test if website exists
-            if curl -s --head ${URL} 
+            URL="localhost"
+            if curl -s --head ${URL}
             then
-              return 0
+              return 1
             else
               return 1
             fi
+      - destroy_infrastructure
 
 workflows:
   ci-cd-workflow:
     jobs:
-      # - create_infrastructure
-      # - configure_infrastructure:
-      #     requires:
-      #       - create_infrastructure
+      - create_infrastructure
+      - configure_infrastructure:
+          requires:
+            - create_infrastructure
       - smoke_test
