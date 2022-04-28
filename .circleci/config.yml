@@ -23,7 +23,7 @@ jobs:
             cat inventory
             mv inventory /tmp/inventory  # save_dir == restore_dir
       - save_cache:
-          key: new-inventory
+          key: instance-inventory
           paths:
             - /tmp/inventory
 
@@ -42,7 +42,7 @@ jobs:
             sudo apt install ansible
       - restore_cache:
           keys:
-            - new-inventory
+            - instance-inventory
       - run:
           name: Run Playbook and Configure server
           command: |
