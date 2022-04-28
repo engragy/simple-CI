@@ -42,10 +42,10 @@ jobs:
           keys:
             - built-inventory
       - run:
-        name: Run Playbook and Configure server
-        command: |
-          cat inventory
-          ansible-playbook ansible-main.yml
+          name: Run Playbook and Configure server
+          command: |
+            cat inventory
+            ansible-playbook ansible-main.yml
 
 workflows:
   say-hello-workflow:
