@@ -6,24 +6,24 @@ jobs:
       - image: amazon/aws-cli  # image user=root, default working dir=/root/project 
     steps:
       - checkout  # check out source code to working directory
-      # - run:
-      #     name: "Create Cloudformation Stack"
-      #     command: |
-      #       aws cloudformation deploy \
-      #         --template-file cloudformation_template.yml \
-      #         --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5} \
-      #         --region ${AWS_DEFAULT_REGION}
       - run:
-          name: get created ec2 instance public ip
+          name: "Create Cloudformation Stack"
           command: |
-            echo "[all]" > inventory
+            aws cloudformation deploy \
+              --template-file cloudformation_template.yml \
+              --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5} \
+              --region ${AWS_DEFAULT_REGION}
+      - run:
+          name: get created ec2 instance public ip into inventory file
+          command: |
+            echo "[all]" > inventory  # add hosts group
             aws ec2 describe-instances  \
               --query 'Reservations[*].Instances[*].PublicIpAddress' \
               --output text >> inventory
-            cat inventory
-            mv inventory /tmp/inventory  # save_dir == restore_dir
+            cat inventory  # just to verify
+            mv inventory /tmp/inventory  # let save_dir == restore_dir
       - save_cache:
-          key: instance-inventory
+          key: instances-inventory
           paths:
             - /tmp/inventory
 
@@ -42,18 +42,36 @@ jobs:
             sudo apt install ansible
       - restore_cache:
           keys:
-            - instance-inventory
+            - instances-inventory
       - run:
           name: Run Playbook and Configure server
           command: |
-            sudo cp /tmp/inventory .
+            sudo cp /tmp/inventory .  # restore the newly created inventory
             cat inventory
             ansible-playbook ansible-main.yml
+
+  smoke_test: # 3rd build
+    docker:
+      - image: alpine:latest
+    steps:
+      - run: apk add --update curl
+      - run:
+          name: smoke test
+          command: |
+            URL="https://blog.udacity.com/"
+            # Test if website exists
+            if curl -s --head ${URL} 
+            then
+              return 0
+            else
+              return 1
+            fi
 
 workflows:
   ci-cd-workflow:
     jobs:
-      - create_infrastructure
-      - configure_infrastructure:
-          requires:
-            - create_infrastructure
+      # - create_infrastructure
+      # - configure_infrastructure:
+      #     requires:
+      #       - create_infrastructure
+      - smoke_test
