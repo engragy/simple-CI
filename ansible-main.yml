@@ -1,6 +1,6 @@
 ---
 # Exercise for setting up a web server in an aws EC2
-- name: Exercise for setting up a web server in an EC2 (Ubuntu)
+- name: "Exercise -- as the CD part, setting up a web server in an EC2 (Ubuntu)"
   # Use the public IP if the VM is already created
   hosts: all
   # For Ubuntu instances, the user will be `ubuntu`

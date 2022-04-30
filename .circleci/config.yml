@@ -4,10 +4,9 @@ commands:  # commands that can be reused as needed in any job
     steps:
       - run:
           name: Destroy Green Resources
-          when: on_fail
+          when: on_fail  # when on-failer is recommended to put in reusable command
           command: |
             aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5}
-
 
 jobs:
   create_infrastructure:  # 1st build
@@ -59,12 +58,10 @@ jobs:
             cat inventory
             ansible-playbook ansible-main.yml
 
-  smoke_test: # 3rd build
+  smoke_test:  # 3rd build, just causing a failer to handle failers 
     docker:
-      # - image: alpine:latest
-      - image: amazon/aws-cli
+      - image: amazon/aws-cli  # using image with aws, because we will run aws command in case of failer
     steps:
-      # - run: apk add --update curl
       - run:
           name: smoke test
           command: |
@@ -72,19 +69,99 @@ jobs:
             URL="localhost"
             if curl -s --head ${URL}
             then
-              return 1
+              return 0  # there is a response
             else
-              return 1
+              return 1  # no response, the fail
             fi
       - destroy_infrastructure
+
+  create_and_deploy_new_prod:  # 4th build, Deploy green ENV as Bucket
+    # Executes the bucket.yml - Deploy an S3 bucket & synchronize the files between local and the bucket.
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Execute bucket.yml - Create Cloudformation Stack
+          command: |
+            aws cloudformation deploy \
+            --template-file bucket.yml \
+            --stack-name stack-create-bucket-${CIRCLE_WORKFLOW_ID:0:7} \
+            --parameter-overrides MyBucketName="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
+      # upload all contents of the current directory (repository-branch) to the S3 bucket
+      - run: aws s3 sync . s3://mybucket-${CIRCLE_WORKFLOW_ID:0:7} --delete
+
+  get_old_deployment_id:  # 5th build, Fetch and save the old blue Bucket ID
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run: yum install -y tar gzip
+      - run:
+          name: Fetch and save the old pipeline ID (bucket name) responsible for the last release.
+          command: |
+            aws cloudformation \
+            list-exports --query "Exports[?Name==\`PipelineID\`].Value" \
+            --no-paginate --output text > ~/textfile.txt
+      - persist_to_workspace:
+          root: ~/
+          paths: 
+            - textfile.txt
+
+  promote_to_production:  # 6th build, Promote green ENV to Production instead of blue
+    # Executes the cloudfront.yml template that will modify the existing CloudFront Distribution,
+    # to modify its target from the old bucket to the new bucket.
+    # note - use the same stack name of old ENV (green) with deploy command for the new ENV (blue),
+    # so that the stack gets updated instead of creating new one
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Execute cloudfront.yml
+          command: |
+            aws cloudformation deploy \
+            --template-file cloudfront.yml \
+            --stack-name production-distro \
+            --parameter-overrides PipelineID="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
+  
+  clean_up_old_production:  # 7th build, Destroy green production S3 bucket and CloudFormation stack
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run: yum install -y tar gzip
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Destroy the previous production version's S3 bucket and CloudFormation stack. 
+          command: |
+            export OldBucketID=$(cat ~/textfile.txt)
+            aws s3 rm "s3://${OldBucketID}" --recursive
+          #  aws cloudformation delete-stack --stack-name production-distro 
+          #  aws cloudformation delete-stack --stack-name stack-create-bucket-${CIRCLE_WORKFLOW_ID:0:7}
+          #  aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5}
+
 
 workflows:
   ci-cd-workflow:
     jobs:
-      - create_infrastructure
-      - configure_infrastructure:
+      # exercise 1: for every new commit build and configure EC2
+      # - create_infrastructure
+      # - configure_infrastructure:
+      #     requires:
+      #       - create_infrastructure
+      # - smoke_test:
+      #     requires:
+      #       - configure_infrastructure
+      
+      # exercise 2: simulate blue/green deployment startegy, as if site where static runing on S3
+      - create_and_deploy_new_prod
+      - get_old_deployment_id
+      - promote_to_production:
           requires:
-            - create_infrastructure
-      - smoke_test:
+            - create_and_deploy_new_prod
+      - clean_up_old_production:
           requires:
-            - configure_infrastructure
+            - get_old_deployment_id
+            - promote_to_production

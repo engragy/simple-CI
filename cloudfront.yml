@@ -1,0 +1,38 @@
+Parameters:
+  PipelineID:
+    Description: Existing Bucket name
+    Type: String
+
+Resources:
+  CloudFrontOriginAccessIdentity:
+    Type: "AWS::CloudFront::CloudFrontOriginAccessIdentity"
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:  # information abot the identity
+        Comment: Origin Access Identity for Serverless Static Website
+
+  WebpageCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: True
+        DefaultRootObject: index.html  # object that CloudFront requests from origin
+
+        Origins:  # list of origins for this distribution
+          # Amazon S3 bucket domain name format – {EXAMPLE-BUCKET}.s3.{us-west-2}.amazonaws.com
+          - DomainName: !Sub "${PipelineID}.s3.us-east-1.amazonaws.com"
+            Id: webpage  # set TargetOriginId, unique id for origin within the distribution.
+            S3OriginConfig:
+              # format of the value is: origin-access-identity/cloudfront/ID-of-origin-access-identity 
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+
+        DefaultCacheBehavior:  # must include CachePolicyId(recommended) or ForwardedValues(deprecated)  
+          ForwardedValues:  # how CloudFront handles query strings, cookies, and HTTP headers.
+            QueryString: False  # whether you want CloudFront to forward query strings to the origin
+          TargetOriginId: webpage
+          ViewerProtocolPolicy: allow-all  # HTTP or HTTPS
+
+Outputs:
+  PipelineID:
+    Value: !Sub ${PipelineID}
+    Export:
+      Name: PipelineID
